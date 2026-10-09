@@ -13,7 +13,7 @@ import db
 st.set_page_config(page_title="Mon QCM", page_icon="📚", layout="wide")
 db.init_db()
 
-MODELE = "gemini-2.5-flash"
+MODELE = "gemini-3.8-flash"
 
 
 # ---------- Extraction des documents ----------
