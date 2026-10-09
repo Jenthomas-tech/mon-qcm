@@ -58,6 +58,7 @@ Règles :
 - Couvre toutes les notions importantes. Environ une question par notion clé.
   Nombre cible : {cible} questions (ajuste selon la densité réelle du contenu).
 - 4 options par question, une seule bonne réponse.
+- Rédige toutes les questions, les propositions de réponses et les explications en espagnol, même si le document source est en français.
 - N'invente rien : base-toi uniquement sur le contenu fourni.
 - Si une question porte sur un schéma, un graphique ou une image, indique le
   numéro de la page concernée dans "page" (numéro relatif à ce lot, en
