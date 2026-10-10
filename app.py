@@ -221,8 +221,8 @@ else:
         quiz = st.session_state.quiz
         i = st.session_state.index
 
-    if i >= len(quiz):
-        st.success(f"Terminé ! Score : {st.session_state.score}/{len(quiz)}")
+        if i >= len(quiz):
+            st.success(f"Terminé ! Score : {st.session_state.score}/{len(quiz)}")
         else:
             q = db.get_question(quiz[i])
             options = q["options"]
