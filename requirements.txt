@@ -3,3 +3,4 @@ google-genai
 pymupdf
 python-pptx
 Pillow
+supabase
