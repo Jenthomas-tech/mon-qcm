@@ -82,6 +82,14 @@ def lister_questions(chapitre_id):
            .eq("chapitre_id", chapitre_id).execute())
     return [_convertir_question(r) for r in res.data]
 
+def get_question(question_id):
+    adresse = f"{_url()}/rest/v1/questions"
+    r = requests.get(adresse, headers=_headers(),
+                     params={"id": f"eq.{question_id}", "select": "*"})
+    r.raise_for_status()
+    lignes = r.json()
+    return lignes[0] if lignes else None
+
 
 def compter_questions(chapitre_id):
     res = (get_client().table("questions").select("id", count="exact")
