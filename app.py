@@ -224,11 +224,10 @@ else:
         if i >= len(quiz):
             st.success(f"Terminé ! Score : {st.session_state.score}/{len(quiz)}")
         else:
-            conn = db.get_conn()
-            q = conn.execute("SELECT * FROM questions WHERE id=?",
-                             (quiz[i],)).fetchone()
-            conn.close()
-            options = json.loads(q["options"])
+                        q = db.get_question(quiz[i])
+            options = q["options"]
+            if isinstance(options, str):
+                options = json.loads(options)
 
             st.progress(i / len(quiz))
             st.subheader(f"Question {i + 1}/{len(quiz)}")
