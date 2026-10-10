@@ -270,4 +270,5 @@ else:
                 if st.button("Question suivante ➡️"):
                     st.session_state.index += 1
                     st.session_state.repondu = False
+                    st.session_state.resultat_enregistre = False
                     st.rerun()
