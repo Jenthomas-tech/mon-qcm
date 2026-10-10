@@ -223,6 +223,9 @@ else:
 
         if i >= len(quiz):
             st.success(f"Terminé ! Score : {st.session_state.score}/{len(quiz)}")
+            if not st.session_state.get("resultat_enregistre"):
+                db.enregistrer_resultat(chapitre_id, st.session_state.score, len(quiz))
+                st.session_state.resultat_enregistre = True
         else:
             q = db.get_question(quiz[i])
             options = q["options"]
