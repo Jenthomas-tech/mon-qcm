@@ -1,114 +1,93 @@
-import sqlite3
 import json
+import base64
+import streamlit as st
+from supabase import create_client
 
-DB_PATH = "qcm.db"
 
-
-def get_conn():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+@st.cache_resource
+def get_client():
+    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 
 def init_db():
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS matieres (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nom TEXT UNIQUE NOT NULL)""")
-    c.execute("""CREATE TABLE IF NOT EXISTS chapitres (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        matiere_id INTEGER NOT NULL,
-        nom TEXT NOT NULL,
-        UNIQUE(matiere_id, nom))""")
-    c.execute("""CREATE TABLE IF NOT EXISTS questions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chapitre_id INTEGER NOT NULL,
-        enonce TEXT NOT NULL,
-        options TEXT NOT NULL,
-        bonne_reponse INTEGER NOT NULL,
-        explication TEXT,
-        image BLOB,
-        niveau INTEGER DEFAULT 0,
-        prochaine_revision TEXT,
-        nb_reussites INTEGER DEFAULT 0,
-        nb_echecs INTEGER DEFAULT 0)""")
-    conn.commit()
-    conn.close()
+    # Les tables sont créées dans Supabase (SQL Editor), rien à faire ici.
+    pass
+
+
+def _image_to_text(image):
+    if image is None:
+        return None
+    return base64.b64encode(image).decode("ascii")
+
+
+def _text_to_image(texte):
+    if not texte:
+        return None
+    return base64.b64decode(texte)
+
+
+def _convertir_question(row):
+    row = dict(row)
+    row["image"] = _text_to_image(row.get("image"))
+    return row
 
 
 def lister_matieres():
-    conn = get_conn()
-    rows = conn.execute("SELECT * FROM matieres ORDER BY nom").fetchall()
-    conn.close()
-    return rows
+    res = get_client().table("matieres").select("*").order("nom").execute()
+    return res.data
 
 
 def ajouter_matiere(nom):
-    conn = get_conn()
-    try:
-        conn.execute("INSERT INTO matieres (nom) VALUES (?)", (nom.strip(),))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        pass
-    conn.close()
+    nom = nom.strip()
+    if not nom:
+        return
+    get_client().table("matieres").upsert(
+        {"nom": nom}, on_conflict="nom", ignore_duplicates=True).execute()
 
 
 def lister_chapitres(matiere_id):
-    conn = get_conn()
-    rows = conn.execute(
-        "SELECT * FROM chapitres WHERE matiere_id=? ORDER BY nom",
-        (matiere_id,)).fetchall()
-    conn.close()
-    return rows
+    res = (get_client().table("chapitres").select("*")
+           .eq("matiere_id", matiere_id).order("nom").execute())
+    return res.data
 
 
 def ajouter_chapitre(matiere_id, nom):
-    conn = get_conn()
-    try:
-        conn.execute(
-            "INSERT INTO chapitres (matiere_id, nom) VALUES (?, ?)",
-            (matiere_id, nom.strip()))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        pass
-    conn.close()
+    nom = nom.strip()
+    if not nom:
+        return
+    get_client().table("chapitres").upsert(
+        {"matiere_id": matiere_id, "nom": nom},
+        on_conflict="matiere_id,nom", ignore_duplicates=True).execute()
 
 
 def ajouter_questions(chapitre_id, questions):
     """questions: liste de dicts avec enonce, options, bonne_reponse,
     explication, image (bytes ou None)."""
-    conn = get_conn()
+    lignes = []
     for q in questions:
-        conn.execute(
-            """INSERT INTO questions
-               (chapitre_id, enonce, options, bonne_reponse, explication, image)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (chapitre_id, q["enonce"], json.dumps(q["options"], ensure_ascii=False),
-             q["bonne_reponse"], q.get("explication", ""), q.get("image")))
-    conn.commit()
-    conn.close()
+        lignes.append({
+            "chapitre_id": chapitre_id,
+            "enonce": q["enonce"],
+            "options": json.dumps(q["options"], ensure_ascii=False),
+            "bonne_reponse": q["bonne_reponse"],
+            "explication": q.get("explication", ""),
+            "image": _image_to_text(q.get("image")),
+        })
+    if lignes:
+        get_client().table("questions").insert(lignes).execute()
 
 
 def lister_questions(chapitre_id):
-    conn = get_conn()
-    rows = conn.execute(
-        "SELECT * FROM questions WHERE chapitre_id=?", (chapitre_id,)).fetchall()
-    conn.close()
-    return rows
+    res = (get_client().table("questions").select("*")
+           .eq("chapitre_id", chapitre_id).execute())
+    return [_convertir_question(r) for r in res.data]
 
 
 def compter_questions(chapitre_id):
-    conn = get_conn()
-    n = conn.execute(
-        "SELECT COUNT(*) FROM questions WHERE chapitre_id=?",
-        (chapitre_id,)).fetchone()[0]
-    conn.close()
-    return n
+    res = (get_client().table("questions").select("id", count="exact")
+           .eq("chapitre_id", chapitre_id).execute())
+    return res.count or 0
 
 
 def supprimer_question(question_id):
-    conn = get_conn()
-    conn.execute("DELETE FROM questions WHERE id=?", (question_id,))
-    conn.commit()
-    conn.close()
+    get_client().table("questions").delete().eq("id", question_id).execute()
