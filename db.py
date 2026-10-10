@@ -82,6 +82,43 @@ def lister_questions(chapitre_id):
            .eq("chapitre_id", chapitre_id).execute())
     return [_convertir_question(r) for r in res.data]
 
+def enregistrer_resultat(chapitre_id, score, total):
+    get_client().table("resultats").insert({
+        "chapitre_id": chapitre_id,
+        "score": score,
+        "total": total,
+    }).execute()
+
+
+def stats_chapitre(chapitre_id):
+    """Retourne (score moyen en %, nombre de quiz faits) ou (None, 0)."""
+    res = (get_client().table("resultats")
+           .select("score,total")
+           .eq("chapitre_id", chapitre_id)
+           .execute())
+    lignes = [r for r in res.data if r["total"] > 0]
+    if not lignes:
+        return None, 0
+    moyenne = sum(r["score"] / r["total"] for r in lignes) / len(lignes) * 100
+    return round(moyenne), len(lignes)
+
+
+def stats_matiere(matiere_id):
+    """Moyenne des scores de tous les chapitres de la matière."""
+    chapitres = lister_chapitres(matiere_id)
+    ids = [c["id"] for c in chapitres]
+    if not ids:
+        return None, 0
+    res = (get_client().table("resultats")
+           .select("score,total")
+           .in_("chapitre_id", ids)
+           .execute())
+    lignes = [r for r in res.data if r["total"] > 0]
+    if not lignes:
+        return None, 0
+    moyenne = sum(r["score"] / r["total"] for r in lignes) / len(lignes) * 100
+    return round(moyenne), len(lignes)
+
 def get_question(question_id):
     res = (get_client().table("questions")
            .select("*")
