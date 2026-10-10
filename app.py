@@ -235,8 +235,17 @@ else:
             st.progress(i / len(quiz))
             st.subheader(f"Question {i + 1}/{len(quiz)}")
             if q["image"]:
-                st.image(q["image"])
-            st.write(q["enonce"])
+                try:
+                    img = q["image"]
+                    if isinstance(img, str):
+                        if img.startswith("\\x"):
+                            img = bytes.fromhex(img[2:])
+                        else:
+                            import base64
+                            img = base64.b64decode(img)
+                    st.image(img)
+                except Exception:
+                    st.caption("⚠️ Image illisible pour cette question.")
 
             reponse = st.radio("Votre réponse :", options, index=None,
                                key=f"rep_{i}", disabled=st.session_state.repondu)
