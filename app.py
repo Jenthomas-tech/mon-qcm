@@ -107,6 +107,22 @@ def generer_qcm(cle_api, pages, cible):
             continue
     return resultat
 
+def generer_qcm_avec_retry(cle_api, pages, cible, essais=4):
+    """Réessaie si Google est surchargé (503) ou limite le débit (429)."""
+    for tentative in range(essais):
+        try:
+            return generer_qcm(cle_api, pages, cible)
+        except Exception as e:
+            message = str(e)
+            temporaire = ("503" in message or "UNAVAILABLE" in message
+                          or "429" in message or "RESOURCE_EXHAUSTED" in message)
+            if temporaire and tentative < essais - 1:
+                attente = 5 * (2 ** tentative)  # 5 s, 10 s, 20 s
+                st.toast(f"Google est surchargé, nouvel essai dans {attente} s...")
+                time.sleep(attente)
+            else:
+                raise
+
 
 # ---------- Interface ----------
 
@@ -185,7 +201,7 @@ if page == "📁 Mes cours":
                     lot = pages[n * TAILLE_LOT:(n + 1) * TAILLE_LOT]
                     cible = max(3, int(len(lot) * 1.5 * facteur))
                     try:
-                        qs = generer_qcm(cle_api, lot, cible)
+                        qs = generer_qcm_avec_retry(cle_api, lot, cible)
                         db.ajouter_questions(chapitre_id, qs)
                         total += len(qs)
                     except Exception as e:
