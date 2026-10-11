@@ -156,22 +156,22 @@ if page == "📁 Mes cours":
 
     st.divider()
     st.subheader("Téléverser un cours")
-    fichiers = st.file_uploader("PDF ou PowerPoint", type=["pdf", "pptx"],
-                                accept_multiple_files=True)
+    fichiers = st.file_uploader("PDF ou PowerPoint", type=["pdf", "pptx"], accept_multiple_files=True)
     intensite = st.select_slider(
         "Nombre de questions", ["Moins", "Standard", "Plus"], value="Standard")
     facteur = {"Moins": 0.5, "Standard": 1.0, "Plus": 1.6}[intensite]
 
-    if fichier and st.button("🚀 Générer les QCM"):
-        if not cle_api:
-            st.error("Saisissez votre clé API Gemini dans le menu de gauche.")
-        else:
-            with st.spinner("Lecture du document..."):
-                contenu = fichier.read()
-                if fichier.name.lower().endswith(".pdf"):
-                    pages = pages_depuis_pdf(contenu)
-                else:
-                    pages = pages_depuis_pptx(contenu)
+    if fichiers and st.button("🚀 Générer les QCM"):
+        for fichier in fichiers:
+            if not cle_api:
+                st.error("Saisissez votre clé API Gemini dans le menu de gauche.")
+            else:
+                with st.spinner("Lecture du document..."):
+                    contenu = fichier.read()
+                    if fichier.name.lower().endswith(".pdf"):
+                        pages = pages_depuis_pdf(contenu)
+                    else:
+                        pages = pages_depuis_pptx(contenu)
             st.write(f"{len(pages)} page(s) détectée(s).")
 
             # Traitement par lots de 8 pages pour rester dans le quota
