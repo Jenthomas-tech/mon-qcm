@@ -21,8 +21,13 @@ def _image_to_text(image):
 
 
 def _text_to_image(texte):
+    """Décode l'image stockée (base64 ou format hexadécimal Postgres)."""
     if not texte:
         return None
+    if isinstance(texte, bytes):
+        return texte
+    if texte.startswith("\\x"):
+        return bytes.fromhex(texte[2:])
     return base64.b64decode(texte)
 
 
@@ -84,6 +89,25 @@ def lister_questions(chapitre_id):
            .eq("chapitre_id", chapitre_id).execute())
     return [_convertir_question(r) for r in res.data]
 
+
+def get_question(question_id):
+    res = (get_client().table("questions")
+           .select("*")
+           .eq("id", question_id)
+           .execute())
+    return _convertir_question(res.data[0]) if res.data else None
+
+
+def compter_questions(chapitre_id):
+    res = (get_client().table("questions").select("id", count="exact")
+           .eq("chapitre_id", chapitre_id).execute())
+    return res.count or 0
+
+
+def supprimer_question(question_id):
+    get_client().table("questions").delete().eq("id", question_id).execute()
+
+
 def enregistrer_resultat(chapitre_id, score, total):
     get_client().table("resultats").insert({
         "chapitre_id": chapitre_id,
@@ -120,20 +144,3 @@ def stats_matiere(matiere_id):
         return None, 0
     moyenne = sum(r["score"] / r["total"] for r in lignes) / len(lignes) * 100
     return round(moyenne), len(lignes)
-
-def get_question(question_id):
-    res = (get_client().table("questions")
-           .select("*")
-           .eq("id", question_id)
-           .execute())
-    return res.data[0] if res.data else None
-
-
-def compter_questions(chapitre_id):
-    res = (get_client().table("questions").select("id", count="exact")
-           .eq("chapitre_id", chapitre_id).execute())
-    return res.count or 0
-
-
-def supprimer_question(question_id):
-    get_client().table("questions").delete().eq("id", question_id).execute()
