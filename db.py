@@ -29,6 +29,8 @@ def _text_to_image(texte):
 def _convertir_question(row):
     row = dict(row)
     row["image"] = _text_to_image(row.get("image"))
+    if isinstance(row.get("options"), str):
+        row["options"] = json.loads(row["options"])
     return row
 
 
