@@ -242,6 +242,11 @@ elif page == "📝 Faire un quiz":
     choix_c = st.selectbox("Chapitre", list(noms_c.keys()))
     chapitre_id = noms_c[choix_c]
 
+    questions = st.session_state.get("quiz_questions", [])
+    if not questions:
+        st.warning("Aucune question chargée. Choisissez un chapitre et cliquez sur « Commencer ».")
+        st.stop()
+
     if st.button("▶️ Démarrer / Relancer le quiz"):
         qs = list(db.lister_questions(chapitre_id))
         random.shuffle(qs)
