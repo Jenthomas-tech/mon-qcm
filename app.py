@@ -156,23 +156,25 @@ if page == "📁 Mes cours":
 
     st.divider()
     st.subheader("Téléverser un cours")
-    s = st.file_uploader("PDF ou PowerPoint", type=["pdf", "pptx"], accept_multiple_files=True)
+    fichiers = st.file_uploader(
+        "PDF ou PowerPoint", type=["pdf", "pptx"], accept_multiple_files=True)
     intensite = st.select_slider(
         "Nombre de questions", ["Moins", "Standard", "Plus"], value="Standard")
     facteur = {"Moins": 0.5, "Standard": 1.0, "Plus": 1.6}[intensite]
 
-    if s and st.button("🚀 Générer les QCM"):
-        for  in s:
-            if not cle_api:
-                st.error("Saisissez votre clé API Gemini dans le menu de gauche.")
-            else:
+    if fichiers and st.button("🚀 Générer les QCM"):
+        if not cle_api:
+            st.error("Saisissez votre clé API Gemini dans le menu de gauche.")
+        else:
+            for fichier in fichiers:
+                st.subheader(fichier.name)
                 with st.spinner("Lecture du document..."):
-                    contenu = .read()
+                    contenu = fichier.read()
                     if fichier.name.lower().endswith(".pdf"):
                         pages = pages_depuis_pdf(contenu)
                     else:
                         pages = pages_depuis_pptx(contenu)
-            st.write(f"{len(pages)} page(s) détectée(s).")
+                st.write(f"{len(pages)} page(s) détectée(s).")
 
                 # Traitement par lots de 8 pages pour rester dans le quota
                 TAILLE_LOT = 8
@@ -189,7 +191,7 @@ if page == "📁 Mes cours":
                     except Exception as e:
                         st.warning(f"Lot {n + 1} ignoré : {e}")
                     barre.progress((n + 1) / nb_lots)
-                st.success(f"{total} question(s) ajoutée(s) !")
+                st.success(f"{total} question(s) ajoutée(s) depuis {fichier.name} !")
 
 # ----- Page : Quiz -----
 elif page == "📝 Faire un quiz":
@@ -217,6 +219,7 @@ elif page == "📝 Faire un quiz":
         st.session_state.index = 0
         st.session_state.score = 0
         st.session_state.repondu = False
+        st.session_state.resultat_enregistre = False
 
     if "quiz" in st.session_state and st.session_state.quiz:
         quiz = st.session_state.quiz
@@ -232,9 +235,6 @@ elif page == "📝 Faire un quiz":
             options = q["options"]
             if isinstance(options, str):
                 options = json.loads(options)
-
-            st.progress(i / len(quiz))
-            st.subheader(f"Question {i + 1}/{len(quiz)}")
 
             st.progress(i / len(quiz))
             st.subheader(f"Question {i + 1}/{len(quiz)}")
@@ -277,4 +277,5 @@ elif page == "📝 Faire un quiz":
 # ----- Page : Progression -----
 elif page == "📊 Progression":
     st.header("Progression")
+    st.info("Bientôt disponible.")
     # ... (le contenu de l'étape 4 donné plus haut)
