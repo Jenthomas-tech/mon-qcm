@@ -28,10 +28,10 @@ def pages_depuis_pdf(fichier_bytes):
     return pages
 
 
-def pages_depuis_pptx(fichier_bytes):
+def pages_depuis_pptx(_bytes):
     """Pour un PPTX : texte par diapositive + images intégrées."""
     from pptx import Presentation
-    prs = Presentation(io.BytesIO(fichier_bytes))
+    prs = Presentation(io.BytesIO(_bytes))
     pages = []
     for slide in prs.slides:
         texte = []
@@ -156,40 +156,40 @@ if page == "📁 Mes cours":
 
     st.divider()
     st.subheader("Téléverser un cours")
-    fichiers = st.file_uploader("PDF ou PowerPoint", type=["pdf", "pptx"], accept_multiple_files=True)
+    s = st.file_uploader("PDF ou PowerPoint", type=["pdf", "pptx"], accept_multiple_files=True)
     intensite = st.select_slider(
         "Nombre de questions", ["Moins", "Standard", "Plus"], value="Standard")
     facteur = {"Moins": 0.5, "Standard": 1.0, "Plus": 1.6}[intensite]
 
-    if fichiers and st.button("🚀 Générer les QCM"):
-        for fichier in fichiers:
+    if s and st.button("🚀 Générer les QCM"):
+        for  in s:
             if not cle_api:
                 st.error("Saisissez votre clé API Gemini dans le menu de gauche.")
             else:
                 with st.spinner("Lecture du document..."):
-                    contenu = fichier.read()
+                    contenu = .read()
                     if fichier.name.lower().endswith(".pdf"):
                         pages = pages_depuis_pdf(contenu)
                     else:
                         pages = pages_depuis_pptx(contenu)
             st.write(f"{len(pages)} page(s) détectée(s).")
 
-            # Traitement par lots de 8 pages pour rester dans le quota
-            TAILLE_LOT = 8
-            total = 0
-            barre = st.progress(0.0)
-            nb_lots = (len(pages) + TAILLE_LOT - 1) // TAILLE_LOT
-            for n in range(nb_lots):
-                lot = pages[n * TAILLE_LOT:(n + 1) * TAILLE_LOT]
-                cible = max(3, int(len(lot) * 1.5 * facteur))
-                try:
-                    qs = generer_qcm(cle_api, lot, cible)
-                    db.ajouter_questions(chapitre_id, qs)
-                    total += len(qs)
-                except Exception as e:
-                    st.warning(f"Lot {n + 1} ignoré : {e}")
-                barre.progress((n + 1) / nb_lots)
-            st.success(f"{total} question(s) ajoutée(s) !")
+                # Traitement par lots de 8 pages pour rester dans le quota
+                TAILLE_LOT = 8
+                total = 0
+                barre = st.progress(0.0)
+                nb_lots = (len(pages) + TAILLE_LOT - 1) // TAILLE_LOT
+                for n in range(nb_lots):
+                    lot = pages[n * TAILLE_LOT:(n + 1) * TAILLE_LOT]
+                    cible = max(3, int(len(lot) * 1.5 * facteur))
+                    try:
+                        qs = generer_qcm(cle_api, lot, cible)
+                        db.ajouter_questions(chapitre_id, qs)
+                        total += len(qs)
+                    except Exception as e:
+                        st.warning(f"Lot {n + 1} ignoré : {e}")
+                    barre.progress((n + 1) / nb_lots)
+                st.success(f"{total} question(s) ajoutée(s) !")
 
 # ----- Page : Quiz -----
 elif page == "📝 Faire un quiz":
