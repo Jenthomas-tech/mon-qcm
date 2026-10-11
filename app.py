@@ -1,6 +1,7 @@
 import io
 import json
 import random
+import re
 import time
 
 import fitz  # pymupdf
@@ -71,6 +72,17 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, au format :
    "bonne_reponse": 0, "explication": "...", "page": 1}}]
 """
 
+def lire_json_tolerant(texte):
+    """Parse le JSON renvoyé par Gemini, en réparant les erreurs fréquentes."""
+    texte = texte.strip()
+    # Retire les éventuelles balises ```json ... ```
+    texte = re.sub(r"^```(?:json)?\s*|\s*```$", "", texte)
+    try:
+        return json.loads(texte)
+    except json.JSONDecodeError:
+        # Supprime les virgules en trop avant ] ou }
+        texte = re.sub(r",\s*([\]}])", r"\1", texte)
+        return json.loads(texte)
 
 def generer_qcm(cle_api, pages, cible):
     client = genai.Client(api_key=cle_api)
@@ -89,7 +101,7 @@ def generer_qcm(cle_api, pages, cible):
         config=types.GenerateContentConfig(
             response_mime_type="application/json"),
     )
-    donnees = json.loads(reponse.text)
+    donnees = lire_json_tolerant(reponse.text)
     resultat = []
     for q in donnees:
         try:
@@ -116,7 +128,8 @@ def generer_qcm_avec_retry(cle_api, pages, cible, essais=4):
         except Exception as e:
             message = str(e)
             temporaire = ("503" in message or "UNAVAILABLE" in message
-                          or "429" in message or "RESOURCE_EXHAUSTED" in message)
+                or "429" in message or "RESOURCE_EXHAUSTED" in message
+                or isinstance(e, json.JSONDecodeError))
             if temporaire and tentative < essais - 1:
                 attente = 5 * (2 ** tentative)  # 5 s, 10 s, 20 s
                 st.toast(f"Google est surchargé, nouvel essai dans {attente} s...")
