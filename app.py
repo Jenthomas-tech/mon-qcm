@@ -1,6 +1,7 @@
 import io
 import json
 import random
+import time
 
 import fitz  # pymupdf
 import streamlit as st
