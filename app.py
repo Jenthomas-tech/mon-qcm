@@ -242,11 +242,12 @@ elif page == "📝 Faire un quiz":
     choix_c = st.selectbox("Chapitre", list(noms_c.keys()))
     chapitre_id = noms_c[choix_c]
 
-    questions = st.session_state.get("quiz_questions", [])
-    if not questions:
-        st.warning("Aucune question chargée. Choisissez un chapitre et cliquez sur « Commencer ».")
-        st.stop()
-
+    # 1. Choix du chapitre
+    noms_c = {c["nom"]: c["id"] for c in chapitres}
+    choix_c = st.selectbox("Chapitre", list(noms_c.keys()))
+    chapitre_id = noms_c[choix_c]
+    
+    # 2. Le bouton Démarrer
     if st.button("▶️ Démarrer / Relancer le quiz"):
         qs = list(db.lister_questions(chapitre_id))
         random.shuffle(qs)
@@ -254,11 +255,18 @@ elif page == "📝 Faire un quiz":
         st.session_state.index = 0
         st.session_state.score = 0
         st.session_state.repondu = False
-        st.session_state.resultat_enregistre = False
+    
+    # 3. ICI : la vérification (cause 1)
+    if not st.session_state.get("quiz"):
+        st.warning("Aucune question chargée. Choisissez un chapitre et cliquez sur « ▶️ Démarrer / Relancer le quiz ».")
+        st.stop()
+    
+    # 4. Ensuite seulement, l'affichage de la question
+    quiz = st.session_state.quiz
+    i = st.session_state.index
+    # ... le reste de votre code (affichage de la question, options, etc.)
 
-    if "quiz" in st.session_state and st.session_state.quiz:
-        quiz = st.session_state.quiz
-        i = st.session_state.index
+
 
         if i >= len(quiz):
             st.success(f"Terminé ! Score : {st.session_state.score}/{len(quiz)}")
