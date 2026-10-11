@@ -15,7 +15,7 @@ import db
 st.set_page_config(page_title="Mon QCM", page_icon="📚", layout="wide")
 db.init_db()
 
-MODELE = "gemini-3.8-flash"
+MODELE = "gemini-2.5-flash"
 
 
 # ---------- Extraction des documents ----------
@@ -72,6 +72,7 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, au format :
    "bonne_reponse": 0, "explication": "...", "page": 1}}]
 """
 
+
 def lire_json_tolerant(texte):
     """Parse le JSON renvoyé par Gemini, en réparant les erreurs fréquentes."""
     texte = texte.strip()
@@ -83,6 +84,7 @@ def lire_json_tolerant(texte):
         # Supprime les virgules en trop avant ] ou }
         texte = re.sub(r",\s*([\]}])", r"\1", texte)
         return json.loads(texte)
+
 
 def generer_qcm(cle_api, pages, cible):
     client = genai.Client(api_key=cle_api)
@@ -120,6 +122,7 @@ def generer_qcm(cle_api, pages, cible):
             continue
     return resultat
 
+
 def generer_qcm_avec_retry(cle_api, pages, cible, essais=4):
     """Réessaie si Google est surchargé (503) ou limite le débit (429)."""
     for tentative in range(essais):
@@ -128,8 +131,8 @@ def generer_qcm_avec_retry(cle_api, pages, cible, essais=4):
         except Exception as e:
             message = str(e)
             temporaire = ("503" in message or "UNAVAILABLE" in message
-                or "429" in message or "RESOURCE_EXHAUSTED" in message
-                or isinstance(e, json.JSONDecodeError))
+                          or "429" in message or "RESOURCE_EXHAUSTED" in message
+                          or isinstance(e, json.JSONDecodeError))
             if temporaire and tentative < essais - 1:
                 attente = 5 * (2 ** tentative)  # 5 s, 10 s, 20 s
                 st.toast(f"Google est surchargé, nouvel essai dans {attente} s...")
@@ -242,12 +245,7 @@ elif page == "📝 Faire un quiz":
     choix_c = st.selectbox("Chapitre", list(noms_c.keys()))
     chapitre_id = noms_c[choix_c]
 
-    # 1. Choix du chapitre
-    noms_c = {c["nom"]: c["id"] for c in chapitres}
-    choix_c = st.selectbox("Chapitre", list(noms_c.keys()))
-    chapitre_id = noms_c[choix_c]
-    
-    # 2. Le bouton Démarrer
+    # Bouton Démarrer
     if st.button("▶️ Démarrer / Relancer le quiz"):
         qs = list(db.lister_questions(chapitre_id))
         random.shuffle(qs)
@@ -255,67 +253,66 @@ elif page == "📝 Faire un quiz":
         st.session_state.index = 0
         st.session_state.score = 0
         st.session_state.repondu = False
-    
-    # 3. ICI : la vérification (cause 1)
+        st.session_state.resultat_enregistre = False
+        st.session_state.chapitre_quiz = chapitre_id
+
+    # Vérification : un quiz doit être chargé
     if not st.session_state.get("quiz"):
-        st.warning("Aucune question chargée. Choisissez un chapitre et cliquez sur « ▶️ Démarrer / Relancer le quiz ».")
+        st.warning("Aucune question chargée. Choisissez un chapitre et cliquez "
+                   "sur « ▶️ Démarrer / Relancer le quiz ».")
         st.stop()
-    
-    # 4. Ensuite seulement, l'affichage de la question
+
     quiz = st.session_state.quiz
     i = st.session_state.index
-    # ... le reste de votre code (affichage de la question, options, etc.)
+    chapitre_du_quiz = st.session_state.get("chapitre_quiz", chapitre_id)
 
+    if i >= len(quiz):
+        # Fin du quiz
+        st.success(f"Terminé ! Score : {st.session_state.score}/{len(quiz)}")
+        if not st.session_state.get("resultat_enregistre"):
+            db.enregistrer_resultat(chapitre_du_quiz, st.session_state.score, len(quiz))
+            st.session_state.resultat_enregistre = True
+        if st.button("🔄 Recommencer"):
+            del st.session_state["quiz"]
+            st.rerun()
+    else:
+        q = db.get_question(quiz[i])
+        options = q["options"]
 
+        st.progress(i / len(quiz))
+        st.subheader(f"Question {i + 1}/{len(quiz)}")
+        st.write(q["enonce"])
 
-        if i >= len(quiz):
-            st.success(f"Terminé ! Score : {st.session_state.score}/{len(quiz)}")
-            if not st.session_state.get("resultat_enregistre"):
-                db.enregistrer_resultat(chapitre_id, st.session_state.score, len(quiz))
-                st.session_state.resultat_enregistre = True
-        else:
-            q = db.get_question(quiz[i])
-            options = q["options"]
-            if isinstance(options, str):
-                options = json.loads(options)
+        if q["image"]:
+            try:
+                st.image(q["image"])
+            except Exception:
+                st.caption("⚠️ Image illisible pour cette question.")
 
-            st.progress(i / len(quiz))
-            st.subheader(f"Question {i + 1}/{len(quiz)}")
-            if q["image"]:
-                try:
-                    img = q["image"]
-                    if isinstance(img, str):
-                        if img.startswith("\\x"):
-                            img = bytes.fromhex(img[2:])
-                        else:
-                            import base64
-                            img = base64.b64decode(img)
-                    st.image(img)
-                except Exception:
-                    st.caption("⚠️ Image illisible pour cette question.")
+        reponse = st.radio("Votre réponse :", options, index=None,
+                           key=f"rep_{i}", disabled=st.session_state.repondu)
 
-            reponse = st.radio("Votre réponse :", options, index=None,
-                               key=f"rep_{i}", disabled=st.session_state.repondu)
-
-            if not st.session_state.repondu:
-                if st.button("Valider") and reponse is not None:
+        if not st.session_state.repondu:
+            if st.button("Valider"):
+                if reponse is None:
+                    st.warning("Choisissez une réponse avant de valider.")
+                else:
                     st.session_state.repondu = True
                     st.session_state.derniere = options.index(reponse)
                     if st.session_state.derniere == q["bonne_reponse"]:
                         st.session_state.score += 1
                     st.rerun()
+        else:
+            if st.session_state.derniere == q["bonne_reponse"]:
+                st.success("✅ Bonne réponse !")
             else:
-                if st.session_state.derniere == q["bonne_reponse"]:
-                    st.success("✅ Bonne réponse !")
-                else:
-                    st.error(f"❌ Bonne réponse : {options[q['bonne_reponse']]}")
-                if q["explication"]:
-                    st.info(q["explication"])
-                if st.button("Question suivante ➡️"):
-                    st.session_state.index += 1
-                    st.session_state.repondu = False
-                    st.session_state.resultat_enregistre = False
-                    st.rerun()
+                st.error(f"❌ Bonne réponse : {options[q['bonne_reponse']]}")
+            if q["explication"]:
+                st.info(q["explication"])
+            if st.button("Question suivante ➡️"):
+                st.session_state.index += 1
+                st.session_state.repondu = False
+                st.rerun()
 
 # ----- Page : Progression -----
 elif page == "📊 Progression":
