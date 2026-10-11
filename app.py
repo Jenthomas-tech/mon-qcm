@@ -156,7 +156,8 @@ if page == "📁 Mes cours":
 
     st.divider()
     st.subheader("Téléverser un cours")
-    fichier = st.file_uploader("PDF ou PowerPoint", type=["pdf", "pptx"])
+    fichiers = st.file_uploader("PDF ou PowerPoint", type=["pdf", "pptx"],
+                                accept_multiple_files=True)
     intensite = st.select_slider(
         "Nombre de questions", ["Moins", "Standard", "Plus"], value="Standard")
     facteur = {"Moins": 0.5, "Standard": 1.0, "Plus": 1.6}[intensite]
