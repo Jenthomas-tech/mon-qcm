@@ -276,6 +276,30 @@ elif page == "📝 Faire un quiz":
 
 # ----- Page : Progression -----
 elif page == "📊 Progression":
-    st.header("Progression")
-    st.info("Bientôt disponible.")
-    # ... (le contenu de l'étape 4 donné plus haut)
+    st.header("📊 Progression")
+    matieres = db.lister_matieres()
+    if not matieres:
+        st.info("Ajoutez d'abord des cours.")
+        st.stop()
+
+    for m in matieres:
+        moy_m, nb_m = db.stats_matiere(m["id"])
+        titre = f"📘 {m['nom']}"
+        if moy_m is not None:
+            titre += f" — {moy_m} % ({nb_m} quiz)"
+        else:
+            titre += " — pas encore de quiz"
+
+        with st.expander(titre):
+            chapitres = db.lister_chapitres(m["id"])
+            if not chapitres:
+                st.caption("Aucun chapitre.")
+            for c in chapitres:
+                moy_c, nb_c = db.stats_chapitre(c["id"])
+                nb_q = db.compter_questions(c["id"])
+                if moy_c is None:
+                    st.write(f"**{c['nom']}** : {nb_q} question(s), jamais testé")
+                else:
+                    st.write(f"**{c['nom']}** : {nb_q} question(s), "
+                             f"moyenne {moy_c} % sur {nb_c} quiz")
+                    st.progress(moy_c / 100)
