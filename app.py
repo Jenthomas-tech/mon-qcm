@@ -114,7 +114,7 @@ st.title("📚 Mon QCM")
 
 # Clé API (saisie par l'utilisateur, jamais stockée dans le code)
 cle_api = st.sidebar.text_input("Clé API Gemini", type="password")
-page = st.sidebar.radio("Menu", ["📁 Mes cours", "📝 Faire un quiz"])
+page = st.sidebar.radio("Menu", ["📁 Mes cours", "📝 Faire un quiz", "📊 Progression"])
 
 # ----- Page : Mes cours -----
 if page == "📁 Mes cours":
@@ -191,7 +191,7 @@ if page == "📁 Mes cours":
             st.success(f"{total} question(s) ajoutée(s) !")
 
 # ----- Page : Quiz -----
-else:
+elif page == "📝 Faire un quiz":
     st.header("Quiz")
     matieres = db.lister_matieres()
     if not matieres:
@@ -272,3 +272,8 @@ else:
                     st.session_state.repondu = False
                     st.session_state.resultat_enregistre = False
                     st.rerun()
+
+# ----- Page : Progression -----
+elif page == "📊 Progression":
+    st.header("Progression")
+    # ... (le contenu de l'étape 4 donné plus haut)
